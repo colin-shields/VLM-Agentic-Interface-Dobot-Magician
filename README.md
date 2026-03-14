@@ -49,7 +49,7 @@ Before you start, make sure you have the following.
 ### Software
 | Requirement | Version | How to check / download |
 |---|---|---|
-| Python | 3.10 or newer | `python --version` — [Download](https://www.python.org/downloads/) |
+| Python | 3.14 or newer | `python --version` — [Download](https://www.python.org/downloads/) |
 | pip | any recent version | `pip --version` (included with Python) |
 | Git | any | `git --version` — [Download](https://git-scm.com/downloads) |
 | Visual Studio Code | any recent | [Download](https://code.visualstudio.com/) |
