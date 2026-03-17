@@ -1,322 +1,364 @@
-import streamlit as st
-from PIL import Image
-import cv2
-import subprocess
 import os
-import json
-import numpy as np
-from PIL import ImageDraw, ImageColor
-import google.generativeai as genai
 import re
-from dotenv import load_dotenv
+import subprocess
 
-# Load environment variables
+import cv2
+import numpy as np
+import streamlit as st
+from dotenv import load_dotenv
+from google import genai
+from PIL import Image, ImageColor, ImageDraw
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
 load_dotenv()
 
-# Get API key from environment variable
-api_key = os.getenv("GEMINI_AI_API_KEY")
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    st.error(
+        "❌ GEMINI_API_KEY not found. "
+        "Please create a `.env` file with GEMINI_API_KEY=your_key_here"
+    )
+    st.stop()
 
-# Configure Generative AI API
-genai.configure(api_key=api_key)
+client = genai.Client(api_key=api_key)
+MODEL_NAME = "gemini-3-flash-preview"
 
-model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash-002',
-)
-
-# Additional Colors for Bounding Boxes
-additional_colors = [colorname for (
-    colorname, colorcode) in ImageColor.colormap.items()]
-
-# Utils for Plotting Bounding Boxes
+# Build a large color palette for bounding-box drawing
+_EXTRA_COLORS = list(ImageColor.colormap.keys())
+COLORS = [
+    "red", "green", "blue", "yellow", "orange", "pink", "purple", "brown",
+    "gray", "beige", "turquoise", "cyan", "magenta", "lime", "navy",
+    "maroon", "teal", "olive", "coral", "lavender", "violet", "gold", "silver",
+] + _EXTRA_COLORS
 
 
-def plot_bounding_boxes(im, noun_phrases_and_positions):
-    img = im
+# ---------------------------------------------------------------------------
+# Helper utilities
+# ---------------------------------------------------------------------------
+
+def generate(prompt_parts: list) -> str:
+    """Call the Gemini API and return the plain-text response."""
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=prompt_parts,
+    )
+    return response.text
+
+
+def plot_bounding_boxes(
+    im: Image.Image,
+    noun_phrases_and_positions: list[tuple[str, tuple[int, int, int, int]]],
+) -> str:
+    """
+    Draw labelled bounding boxes on *a copy* of ``im`` and save to disk.
+
+    Args:
+        im: Source PIL image.
+        noun_phrases_and_positions: List of (label, (y1, x1, y2, x2)) tuples
+            where coordinates are in the 0-1000 normalised space used by Gemini.
+
+    Returns:
+        Absolute path of the saved image.
+    """
+    img = im.copy()
     width, height = img.size
-
     draw = ImageDraw.Draw(img)
-    colors = [
-        'red', 'green', 'blue', 'yellow', 'orange', 'pink', 'purple', 'brown',
-        'gray', 'beige', 'turquoise', 'cyan', 'magenta', 'lime', 'navy',
-        'maroon', 'teal', 'olive', 'coral', 'lavender', 'violet', 'gold',
-        'silver'
-    ] + additional_colors
 
-    for i, (noun_phrase, (y1, x1, y2, x2)) in enumerate(noun_phrases_and_positions):
-        color = colors[i % len(colors)]
+    for i, (label, (y1, x1, y2, x2)) in enumerate(noun_phrases_and_positions):
+        color = COLORS[i % len(COLORS)]
         abs_x1 = int(x1 / 1000 * width)
         abs_y1 = int(y1 / 1000 * height)
         abs_x2 = int(x2 / 1000 * width)
         abs_y2 = int(y2 / 1000 * height)
-
-        draw.rectangle(((abs_x1, abs_y1), (abs_x2, abs_y2)),
-                       outline=color, width=4)
-        draw.text((abs_x1 + 8, abs_y1 + 6), noun_phrase, fill=color)
+        draw.rectangle(((abs_x1, abs_y1), (abs_x2, abs_y2)), outline=color, width=4)
+        draw.text((abs_x1 + 8, abs_y1 + 6), label, fill=color)
 
     save_path = os.path.join(os.getcwd(), "image_with_bounding_boxes.png")
     img.save(save_path)
     return save_path
 
-# Parsing Utils
 
+def parse_list_boxes(text: str) -> list[list[int]]:
+    """
+    Parse Gemini bounding-box output into a list of [ymin, xmin, ymax, xmax].
 
-def parse_list_boxes(text):
-    result = []
+    Handles both:
+      - ``[ymin, xmin, ymax, xmax](label)``
+      - ``- [ymin, xmin, ymax, xmax](label)``
+    """
+    result: list[list[int]] = []
     for line in text.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
         try:
-            numbers = line.split('[')[1].split(']')[0].split(',')
-        except:
-            numbers = line.split('- ')[1].split(',')
-        result.append([int(num.strip()) for num in numbers])
+            numbers = line.split("[")[1].split("]")[0].split(",")
+            result.append([int(n.strip()) for n in numbers])
+        except (IndexError, ValueError):
+            try:
+                numbers = line.split("- ")[1].split(",")
+                result.append([int(n.strip()) for n in numbers])
+            except (IndexError, ValueError):
+                continue  # skip malformed lines
     return result
 
 
-# Function to capture image using OpenCV
-def capture_image():
-    st.write("Accessing webcam...")
-    cap = cv2.VideoCapture(0)  # Open the webcam (use 0 for default camera)
+def capture_image() -> str | None:
+    """
+    Capture a single frame from the default webcam (index 0).
+
+    Returns:
+        Path to the saved PNG, or ``None`` on failure.
+    """
+    st.write("Accessing webcam…")
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         st.error("Could not access the webcam.")
         return None
 
     ret, frame = cap.read()
-    if not ret:
-        st.error("Failed to capture image.")
-        cap.release()
-        return None
-
-    # Save the captured image locally
-    img_path = "captured_image.png"
-    cv2.imwrite(img_path, frame)
-
-    # Release the webcam and return the image path
     cap.release()
 
-    # Convert BGR (OpenCV) to RGB (Pillow compatible)
-    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    if not ret:
+        st.error("Failed to capture image.")
+        return None
 
+    img_path = "captured_image.png"
+    cv2.imwrite(img_path, frame)
     return img_path
 
 
-# Streamlit App
+def corners_to_points(
+    corners: list[int],
+) -> list[tuple[int, int]]:
+    """Convert [ymin, xmin, ymax, xmax] to four (x, y) corner points."""
+    ymin, xmin, ymax, xmax = corners
+    return [
+        (xmin, ymin),   # top-left
+        (xmax, ymin),   # top-right
+        (xmin, ymax),   # bottom-left
+        (xmax, ymax),   # bottom-right
+    ]
+
+
+def points_to_corners(
+    points: list[tuple[float, float]],
+) -> list[float]:
+    """Convert four (x, y) corner points back to [ymin, xmin, ymax, xmax]."""
+    top_left, top_right, bottom_left, bottom_right = points
+    xmin, ymin = top_left
+    xmax, ymax = bottom_right
+    return [ymin, xmin, ymax, xmax]
+
+
+def transform_coordinates_dict(
+    workspace_dict: dict[str, list[tuple]],
+    items_dict: dict[str, list[tuple]],
+) -> dict[str, list[tuple[float, float]]]:
+    """
+    Use a homography to map image-space corner points to robot-space coordinates.
+
+    The four robot corners correspond to the physical paper boundary:
+        (300,  100), (300, -100), (200,  100), (200, -100)
+    """
+    robot_corners = np.array(
+        [[300, 100], [300, -100], [200, 100], [200, -100]], dtype=np.float32
+    )
+    image_corners = np.array(workspace_dict["workspace"], dtype=np.float32)
+    st.text(f"Image corners (pixel space):\n{image_corners}")
+
+    homography, _ = cv2.findHomography(image_corners, robot_corners)
+
+    def _transform(pt: tuple) -> tuple[float, float]:
+        p = np.array([pt[0], pt[1], 1.0], dtype=np.float32).reshape(3, 1)
+        t = (homography @ p).flatten()   # shape (3,) — all elements are scalars
+        return float(t[0] / t[2]), float(t[1] / t[2])
+
+    return {key: [_transform(p) for p in points] for key, points in items_dict.items()}
+
+
+def add_color_to_dict(
+    bounding_box_text: str,
+    converted_dict: dict[str, list],
+) -> dict[str, dict]:
+    """
+    Attach colour labels (parsed from the Gemini response string) to the
+    transformed bounding-box dictionary.
+    """
+    pattern = r"-\s*\[.*?\]\((.*?)\)"
+    colors = re.findall(pattern, bounding_box_text)
+    colored: dict[str, dict] = {}
+    for i, color in enumerate(colors):
+        key = f"block_{i}"
+        if key in converted_dict:
+            colored[key] = {"coordinates": converted_dict[key], "color": color}
+    return colored
+
+
+# ---------------------------------------------------------------------------
+# Streamlit UI
+# ---------------------------------------------------------------------------
+
 st.title("VLM Agentic Interface for Dobot Magician")
 
-# Input Section
 user_command = st.text_input(
-    "Enter your command:", "Move the yellow block to the right of the blue block. (Hint: the blocks are at z = -50)")
+    "Enter your command:",
+    "Move the yellow block to the right of the blue block. (Hint: the blocks are at z = -50)",
+)
 run_button = st.button("Run")
 
 if run_button:
-    # Step 1: Capture an image using OpenCV
-    st.write("Capturing image...")
+    # ── Step 1 ── Capture image ──────────────────────────────────────────────
+    st.write("### Step 1 — Capture Image")
     img_path = capture_image()
 
     if img_path is None:
         st.error("Image capture failed. Please try again.")
+        st.stop()
+
+    st.success("Image captured successfully!")
+    im = Image.open(img_path)
+
+    # ── Step 2 ── Detect workspace ───────────────────────────────────────────
+    st.write("### Step 2 — Detecting Workspace Boundary")
+    workspace_response = generate([
+        im,
+        (
+            "Return the bounding box for just the flat, white, rectangular paper "
+            "in the picture using this exact format:\n"
+            "[ymin, xmin, ymax, xmax]\n"
+            "Do not change the format. Do not say anything else."
+        ),
+    ])
+    st.write("**Workspace Bounding Box Agent:**")
+    st.text(workspace_response)
+
+    workspace_list = parse_list_boxes(workspace_response)
+    if not workspace_list:
+        st.error("Could not parse workspace bounding box. Check the image.")
+        st.stop()
+    workspace_dict: dict[str, list] = {"workspace": workspace_list[0]}
+
+    # ── Step 3 ── Detect blocks ──────────────────────────────────────────────
+    st.write("### Step 3 — Detecting Blocks")
+    bounding_box_response = generate([
+        im,
+        (
+            "Return bounding boxes for all the blocks as a list using this exact format:\n"
+            "- [ymin, xmin, ymax, xmax](block_color)\n"
+            "Always put - before each item. Do not change the format. Do not say anything else."
+        ),
+    ])
+    st.write("**Bounding Boxes Agent:**")
+    st.text(bounding_box_response)
+
+    # ── Step 4 ── Spatial analysis ───────────────────────────────────────────
+    st.write("### Step 4 — Spatial Analysis")
+    spatial_response = generate([
+        im,
+        (
+            f"Given the user's command for a robot arm: {user_command}\n"
+            "Describe the spatial relationship between all the relevant objects in the scene.\n"
+            "Do NOT include location/bounding boxes.\n"
+            "Provide the approximate size (mm), shape (mm), orientation, and spatial relationship "
+            "of each relevant object, plus anything else useful for planning the task."
+        ),
+    ])
+    st.write("**Spatial Analysis Agent:**")
+    st.text(spatial_response)
+
+    # ── Draw bounding boxes on image ─────────────────────────────────────────
+    boxes = parse_list_boxes(bounding_box_response)
+    boxes_dict: dict[str, list] = {f"block_{i}": x for i, x in enumerate(boxes)}
+    combined_dict = {**boxes_dict, **workspace_dict}
+
+    processed_image_path = plot_bounding_boxes(im, list(combined_dict.items()))
+    st.image(processed_image_path, caption="Image with Bounding Boxes")
+
+    # ── Step 5 ── Coordinate transformation ─────────────────────────────────
+    st.write("### Step 5 — Transforming to Robot Coordinates")
+    boxes_points = {label: corners_to_points(corners) for label, corners in boxes_dict.items()}
+    workspace_dict["workspace"] = corners_to_points(workspace_dict["workspace"])
+
+    transformed_boxes = transform_coordinates_dict(workspace_dict, boxes_points)
+    st.text(f"Transformed (robot-space) boxes:\n{transformed_boxes}")
+
+    transformed_corners = {
+        label: points_to_corners(pts) for label, pts in transformed_boxes.items()
+    }
+    st.text(f"Back to corner format:\n{transformed_corners}")
+
+    colored_dict = add_color_to_dict(bounding_box_response, transformed_corners)
+    st.text(f"Color-labelled dict:\n{colored_dict}")
+
+    # ── Step 6 ── Generate action plan ───────────────────────────────────────
+    st.write("### Step 6 — Planning Steps")
+    steps_response = generate([
+        (
+            f"Based on the scene below, generate a detailed, step-by-step plan to perform "
+            f"this action using a Dobot Magician robot arm: {user_command}\n\n"
+            f"Object locations/bounding boxes (use these exact values): {colored_dict}\n\n"
+            f"Spatial analysis: {spatial_response}"
+        ),
+    ])
+    st.write("**Logic Steps Agent:**")
+    st.text(steps_response)
+
+    # ── Step 7 ── Generate robot Python code ─────────────────────────────────
+    st.write("### Step 7 — Generating Robot Control Code")
+    try:
+        with open("DobotDllType.txt", encoding="utf-8") as f:
+            dobot_dll = f.read()
+        with open(
+            "CMPSC 497 Robotics Lecture #5 Industrial Robots v3.3.txt", encoding="utf-8"
+        ) as f:
+            example_code = f.read()
+    except FileNotFoundError as exc:
+        st.error(f"Required reference file not found: {exc}")
+        st.stop()
+
+    code_response = generate([
+        (
+            f"Here are the steps to perform on a Dobot Magician robot arm:\n{steps_response}\n\n"
+            "Write a complete Python program to execute these steps. "
+            "Return ONLY Python code — use comments for explanations.\n"
+            "Example code is appended below."
+        ),
+        example_code,
+    ])
+    st.write("**Coding Agent:**")
+    st.code(code_response, language="python")
+
+    # ── Step 8 ── Write and run the generated code ───────────────────────────
+    file_path = os.path.join("demo-magician-python-64-master", "DobotControl.py")
+    cleaned_code = (
+        code_response.strip()
+        .removeprefix("```python")
+        .removesuffix("```")
+        .strip()
+    )
+
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(cleaned_code)
+        st.success(f"Python code written to `{file_path}`")
+    except OSError as exc:
+        st.error(f"Could not write generated code: {exc}")
+        st.stop()
+
+    current_dir = os.getcwd()
+    subfolder_path = os.path.join(current_dir, "demo-magician-python-64-master")
+    os.chdir(subfolder_path)
+    result = subprocess.run(["python", "DobotControl.py"], capture_output=True, text=True)
+    os.chdir(current_dir)
+
+    if result.returncode != 0:
+        st.error(f"Robot script exited with an error:\n{result.stderr}")
     else:
-        st.write("Image captured successfully!")
-
-        # Load the captured image using PIL
-        im = Image.open(img_path)
-
-        # Step 1: Get bounding boxes for workspace
-        st.write("Getting bounding boxes for workspace from image...")
-        workspace_bounding_box = model.generate_content([
-            im,
-            (
-                '''Return bounding boxes for just the flat, white, rectangluar paper in picture in the following format as:\n 
-                [ymin, xmin, ymax, xmax]
-                Don't change the format. Don't say anything else.'''
-            ),
-        ])
-
-        # Parse bounding box for workspace
-        workspace = parse_list_boxes(workspace_bounding_box.text)
-        workspace_dict = {f'workspace': x for i, x in enumerate(workspace)}
-
-        # Display raw output of bounding boxes
-        st.write("Workspace Bounding Box Agent:")
-        st.text(workspace_bounding_box.text)
-
-        # Step 2: Generate bounding boxes using Generative AI model
-        st.write("Generating bounding boxes from image...")
-        bounding_boxes = model.generate_content([
-            im,
-            (
-                '''Return bounding boxes for all the blocks in the following format as
-                 a list. \n [ymin, xmin, ymax, xmax](block_color). Don't change the format and always put - before each item. Don't say anything else.'''
-            ),
-        ])
-
-        # Display raw output of bounding boxes
-        st.write("Bounding Boxes Agent:")
-        st.text(bounding_boxes.text)
-
-        # Step 3: Spatial Analysis
-        spatial_analysis = model.generate_content([
-            im,
-            (
-                f'''Given the user's command for a robot arm: {user_command}
-                  Descibe the spatial relationship between the all the relavant object in the scene captured in the image. 
-                  I DO NOT need the location/bounding boxes. 
-                  I need just the approximate size (mm), shape(mm), orientation and spatial relationship of each of the relavant objects.
-                  Include anything else that would be useful to know if I will be coming up with a plan to perform the user's command.'''
-            ),
-        ])
-
-        # Display raw output of bounding boxes
-        st.write("Spatial Analysis Agent:")
-        st.text(spatial_analysis.text)
-
-        # Parse bounding boxes and plot them on the image
-        boxes = parse_list_boxes(bounding_boxes.text)
-        boxes_dict = {f'block_{i}': x for i, x in enumerate(boxes)}
-
-        combined_dict = boxes_dict | workspace_dict
-
-        processed_image_path = plot_bounding_boxes(
-            im, noun_phrases_and_positions=list(combined_dict.items()))
-
-        # Display processed image with bounding boxes
-        st.image(processed_image_path, caption="Image with Bounding Boxes")
-
-        # processed_image_path = plot_bounding_boxes(
-        #     im, noun_phrases_and_positions=list(boxes_dict.items()))
-
-        # Step 4: Translate the coordinates
-        def corners_to_points(corners):
-            ymin, xmin, ymax, xmax = corners
-            top_left = (xmin, ymin)
-            top_right = (xmax, ymin)
-            bottom_left = (xmin, ymax)
-            bottom_right = (xmax, ymax)
-            return [top_left, top_right, bottom_left, bottom_right]
-
-        def points_to_corners(points):
-            top_left, top_right, bottom_left, bottom_right = points
-            xmin, ymin = top_left
-            xmax, ymax = bottom_right
-            return [ymin, xmin, ymax, xmax]
-
-        # Define the robot coordinates for the corners of the paper
-        robot_corners = np.array(
-            [[300, 100], [300, -100], [200, 100], [200, -100]], dtype=np.float32)
-
-        def transform_coordinates_dict(image_dict, items_dict):
-            # Extract image corners from the first dictionary
-            image_corners = np.array(image_dict['workspace'], dtype=np.float32)
-            st.text(image_corners)
-            # Compute the homography matrix
-            homography_matrix, _ = cv2.findHomography(
-                image_corners, robot_corners)
-
-            # Function to transform a single point
-            def transform_point(image_coords):
-                point = np.array(
-                    [image_coords[0], image_coords[1], 1], dtype=np.float32).reshape(3, 1)
-                transformed_point = np.dot(homography_matrix, point)
-                x_robot = transformed_point[0] / transformed_point[2]
-                y_robot = transformed_point[1] / transformed_point[2]
-                return (x_robot[0], y_robot[0])
-
-            # Transform all items in the second dictionary
-            transformed_items_dict = {}
-            for key, points in items_dict.items():
-                transformed_points = [
-                    transform_point(point) for point in points]
-                transformed_items_dict[key] = transformed_points
-
-            return transformed_items_dict
-
-        for label, corners in boxes_dict.items():
-            boxes_dict[label] = corners_to_points(corners)
-
-        workspace_dict['workspace'] = corners_to_points(
-            workspace_dict['workspace'])
-
-        transformed_boxes = transform_coordinates_dict(
-            workspace_dict, boxes_dict)
-        st.text(transformed_boxes)
-
-        for label, points in transformed_boxes.items():
-            transformed_boxes[label] = points_to_corners(points)
-        st.text(transformed_boxes)
-
-        def add_color_to_dict(input_string, converted_dict):
-            # Extract color and bounding box information from the input string
-            pattern = r'- \[.*?\]\((.*?)\)'
-            colors = re.findall(pattern, input_string)
-
-            # Create a new dictionary with colors included
-            colored_dict = {}
-            for i, color in enumerate(colors):
-                block_key = f'block_{i}'
-                if block_key in converted_dict:
-                    colored_dict[block_key] = {
-                        'coordinates': converted_dict[block_key],
-                        'color': color
-                    }
-            return colored_dict
-
-        colored_dict = add_color_to_dict(
-            bounding_boxes.text, transformed_boxes)
-        st.text(colored_dict)
-
-        # Step 5: Generate steps to perform the action based on user command and scene
-        steps = model.generate_content(f'''
-        Based on the scene provided below, generate a list of detailed and specific steps to perform this action using a Dobot Magician robot arm: {user_command}.\n
-        Here is the location/bounding boxes of the objects (use these actual values to determine locations, etc.; don't use example locations): {colored_dict}\n
-        Here is the spatial analysis of the objects: {spatial_analysis.text}
-        ''')
-
-        # Display generated steps
-        st.write("Logic Steps Agent:")
-        st.text(steps.text)
-
-        # Step 5: Generate Python code for robot arm based on steps
-        with open("DobotDllType.txt", encoding="utf-8") as file:
-            dobot_dll = file.read()
-        with open("CMPSC 497 Robotics Lecture #5 Industrial Robots v3.3.txt", encoding="utf-8") as file:
-            example_code = file.read()
-
-        code = model.generate_content([f'''
-        Here are a list of steps I want to perform on a Dobot Magician robot arm:\n {steps.text}\n\n
-        Now write a Python program to excute these steps. Only return Python code, and no other text (use comments for other info).\n
-        I've also attached some example code.''', example_code])
-
-        # Display generated Python code
-        st.write("Coding Agent:")
-        st.code(code.text, language='python')
-
-        # # Define the file path where the Python code will be written
-        file_path = os.path.join(
-            "demo-magician-python-64-master", "DobotControl.py")
-
-        # Strip markdown formatting from code.text
-        cleaned_code = code.text.strip().removeprefix(
-            "```python").removesuffix("```").strip()
-
-        # Write the cleaned code to the specified file
-        try:
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(cleaned_code)
-            st.write(f"Python code successfully written to {file_path}")
-        except Exception as e:
-            st.write(f"An error occurred while writing to the file: {e}")
-
-        # Get the current working directory
-        current_dir = os.getcwd()
-
-        # Navigate to the subfolder where the file is located
-        subfolder_path = os.path.join(
-            current_dir, "demo-magician-python-64-master")
-
-        # Change the current working directory to the subfolder
-        os.chdir(subfolder_path)
-
-        # Run the file using the full path
-        subprocess.run(["python", "DobotControl.py"])
-
-        # Restore the original working directory
-        os.chdir(current_dir)
+        st.success("Robot script executed successfully.")
+        if result.stdout:
+            st.text(result.stdout)
