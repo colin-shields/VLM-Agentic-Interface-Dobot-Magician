@@ -165,12 +165,10 @@ class EMotorS(Structure):
     ]
 
 
-##################  Arm orientation定义   ##################
 ArmOrientation = enum(
     LeftyArmOrientation=0,
     RightyArmOrientation=1)
 
-##################  点动示教部分   ##################
 
 
 class JOGJointParams(Structure):
@@ -237,7 +235,6 @@ class JOGCmd(Structure):
         ("cmd", c_byte)
     ]
 
-##################  再现运动部分   ##################
 
 
 class PTPJointParams(Structure):
@@ -404,7 +401,6 @@ class CPCommonParams(Structure):
         ("accelerationRatio", c_float)
     ]
 
-##################  圆弧：ARC   ##################
 
 
 class ARCPoint(Structure):
@@ -641,14 +637,11 @@ DobotCommunicate = enum(
 isUsingLinearRail = False
 ##################  API func   ##################
 
-# parker add 2018 8 29 添加Wifi设置模块退出标志位
 QuitDobotApiFlag = True
 
 
 def load():
     if platform.system() == "Windows":
-        print("您用的dll是64位，为了顺利运行，请保证您的python环境也是64位")
-        print("python环境是：", platform.architecture())
         return CDLL("./DobotDll.dll",  RTLD_GLOBAL)
     elif platform.system() == "Darwin":
         return CDLL("./libDobotDll.dylib",  RTLD_GLOBAL)
@@ -816,7 +809,6 @@ def GetQueuedCmdMotionFinish(api):
 
 
 def SetQueuedCmdStartExec(api):
-    # 特殊处理
     if slaveDevType == DevType.Magician:
         while (True):
             result = api.SetQueuedCmdStartExec(c_int(masterId), c_int(slaveId))
@@ -854,7 +846,6 @@ def SetQueuedCmdStartExec(api):
 
 
 def SetQueuedCmdStopExec(api):
-    # 滑轨特殊处理
     if slaveDevType == DevType.Magician:
         while (True):
             result = api.SetQueuedCmdStopExec(c_int(masterId), c_int(slaveId))
@@ -892,7 +883,6 @@ def SetQueuedCmdStopExec(api):
 
 
 def SetQueuedCmdForceStopExec(api):
-    # 滑轨特殊处理
     if slaveDevType == DevType.Magician:
         while (True):
             result = api.SetQueuedCmdForceStopExec(
@@ -952,7 +942,6 @@ def SetQueuedCmdStopDownload(api):
 
 
 def SetQueuedCmdClear(api):
-    # 滑轨特殊处理
     # return [api.SetQueuedCmdClear(c_int(masterId), c_int(slaveId))]
     if slaveDevType == DevType.Magician:
         while (True):
@@ -1083,7 +1072,6 @@ def GetDeviceVersion(api):
 
 
 def SetDeviceWithL(api, isWithL, version=0, isQueued=0):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1104,7 +1092,6 @@ def SetDeviceWithL(api, isWithL, version=0, isQueued=0):
 
 
 def GetDeviceWithL(api):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1193,7 +1180,6 @@ def GetPose(api):
 
 
 def GetPoseL(api):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1208,7 +1194,6 @@ def GetPoseL(api):
             dSleep(5)
             continue
         break
-    # parker add 20190524  判断返回的值是否为空
     if not math.isnan(l.value):
         return [l.value]
     else:
@@ -1296,9 +1281,7 @@ def SetHOMECmd(api, temp, isQueued=0):
     cmd.temp = temp
     queuedCmdIndex = c_uint64(0)
     queuedCmdIndex1 = c_uint64(0)
-    # 滑轨的特殊处理
     if masterDevType == DevType.Magician:
-        # 只有Magician
         while (True):
             result = api.SetHOMECmd(c_int(masterId), c_int(
                 slaveId), byref(cmd), isQueued, byref(queuedCmdIndex))
@@ -1307,8 +1290,6 @@ def SetHOMECmd(api, temp, isQueued=0):
                 continue
             break
     elif masterDevType == DevType.Conntroller and slaveDevType == DevType.MagicianLite:
-        # 外部控制器加MagicianLite
-        # if isUsingLinearRail:#如果使用了滑轨，发给控制盒
         while (True):
             result = api.SetHOMECmd(
                 c_int(masterId), c_int(-1), byref(cmd), isQueued, byref(queuedCmdIndex1))
@@ -1324,7 +1305,6 @@ def SetHOMECmd(api, temp, isQueued=0):
                 continue
             break
     elif masterDevType == DevType.Conntroller and slaveDevType == DevType.Idle:
-        # 外部控制器
         # if isUsingLinearRail:
         while (True):
             result = api.SetHOMECmd(
@@ -1334,7 +1314,6 @@ def SetHOMECmd(api, temp, isQueued=0):
                 continue
             break
     else:
-        # 其他情况
         while (True):
             result = api.SetHOMECmd(c_int(masterId), c_int(
                 slaveDevType), byref(cmd), isQueued, byref(queuedCmdIndex))
@@ -1620,7 +1599,6 @@ def GetJOGCoordinateParams(api):
 
 
 def SetJOGLParams(api, velocity, acceleration, isQueued=0):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1643,7 +1621,6 @@ def SetJOGLParams(api, velocity, acceleration, isQueued=0):
 
 
 def GetJOGLParams(api):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1668,7 +1645,6 @@ def SetJOGCommonParams(api, value_velocityratio, value_accelerationratio, isQueu
     param.accelerationRatio = value_accelerationratio
     queuedCmdIndex = c_uint64(0)
 
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         while (True):
             result = api.SetJOGCommonParams(c_int(masterId), c_int(
@@ -1725,7 +1701,6 @@ def GetJOGCommonParams(api):
 
 
 def SetJOGCmd(api, isJoint, cmd, isQueued=0):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and slaveDevType == DevType.MagicianLite:
@@ -1830,7 +1805,6 @@ def GetPTPCoordinateParams(api):
 
 
 def SetPTPLParams(api, velocity, acceleration, isQueued=0):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1853,7 +1827,6 @@ def SetPTPLParams(api, velocity, acceleration, isQueued=0):
 
 
 def GetPTPLParams(api):
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         tempSlaveId = slaveId
     elif masterDevType == DevType.Conntroller and (slaveDevType == DevType.MagicianLite or slaveDevType == DevType.Idle):
@@ -1905,7 +1878,6 @@ def SetPTPCommonParams(api, velocityRatio, accelerationRatio, isQueued=0):
     pbParam.accelerationRatio = accelerationRatio
     queuedCmdIndex = c_uint64(0)
 
-    # 滑轨的特殊处理
     if slaveDevType == DevType.Magician:
         while (True):
             result = api.SetPTPCommonParams(c_int(masterId), c_int(
@@ -3656,7 +3628,6 @@ def RestartMagicBox(api):
         break
 
 
-# Magician Lite 2019-11-05 Magician Lite单独的API
 
 
 def SetLostStepEnableAndParamsCmd(api, enable, threshlod, isQueued=0):
@@ -3746,7 +3717,7 @@ def SetArmSpeedRatio(api, paramsMode, speedRatio, isQueued=0):
 
 def GetArmSpeedRatio(api, paramsMode=0):
     speedRatio = c_uint8(0)
-    # paramsMode = c_uint8(0)
+# paramsMode = c_uint8(0)
     while (True):
         result = api.GetArmSpeedRatio(c_int(masterId), c_int(
             slaveId),  c_uint8(paramsMode), byref(speedRatio))
@@ -3800,7 +3771,6 @@ def SetProgbar(api, progbar):
             continue
         break
 
-# MagicianLite/Magic Box同步等待
 
 
 def SetEndEffectorTypeEx(api, endType=0, isQueued=1):

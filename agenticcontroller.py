@@ -327,12 +327,12 @@ if run_button:
     # ── Step 7 ── Generate robot Python code ─────────────────────────────────
     st.write("### Step 7 — Generating Robot Control Code")
     try:
-        with open("DobotDllType.txt", encoding="utf-8") as f:
-            dobot_dll = f.read()
-        with open(
-            "CMPSC 497 Robotics Lecture #5 Industrial Robots v3.3.txt", encoding="utf-8"
-        ) as f:
+        with open("python demo.txt", encoding="utf-8") as f:
             example_code = f.read()
+        with open("DobotDllType.txt") as f:
+            dobot_dll = f.read()
+        with open("CMPSC 497 Robotics Lecture #5 Industrial Robots v3.3.txt", encoding="utf-8") as f:
+            lecture_ppt = f.read()
     except FileNotFoundError as exc:
         st.error(f"Required reference file not found: {exc}")
         st.stop()
@@ -340,11 +340,15 @@ if run_button:
     code_response = generate([
         (
             f"Here are the steps to perform on a Dobot Magician robot arm:\n{steps_response}\n\n"
-            "Write a complete Python program to execute these steps. "
+            "Write a complete Python program to execute these steps. For the z-coordinates, use 50.0 for hover and -50.0 to pick up the blocks. Use the suction cup attachment. Remember to call SetHOMECmd() before moving the robot.\n"
+            "The y coordinates go from left-to-right. Left is positive, right is negative, the center is y=0. The x coordinates go from front-to-back in front of the bot."
+            "The X-coordinates should range from 200 to 300, and the Y-coordinates should range from -100 to 100. If either are not in this range, swap the x coordinates and the y coordinates.\n"
             "Return ONLY Python code — use comments for explanations.\n"
             "Example code is appended below."
         ),
         example_code,
+        dobot_dll,
+        lecture_ppt
     ])
     st.write("**Coding Agent:**")
     st.code(code_response, language="python")
