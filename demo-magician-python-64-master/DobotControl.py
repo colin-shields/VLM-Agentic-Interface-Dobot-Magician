@@ -1,84 +1,79 @@
 import DobotDllType as dType
-import time
 
-# Connect to Dobot
+# Load the API and establish a connection
 api = dType.load()
 state = dType.ConnectDobot(api, "", 115200)[0]
-if state != 0:
-    print("Error connecting to Dobot")
-    exit()
 
-# Set parameters (adjust as needed)
-dType.SetHOMEParams(api, 200, 200, 200, 200)
-dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200)
-dType.SetPTPCommonParams(api, 100, 100)
-dType.SetPTPCoordinateParams(api, 200, 200, 200, 200) #Added for smoother movement
+if state == dType.DobotConnect.DobotConnect_NoError:
+    # Clear any previous commands in the queue
+    dType.SetQueuedCmdClear(api)
 
-ptpMode = 2 # Linear mode
+    # Motion Parameter Settings (Standard for Magician)
+    dType.SetHOMEParams(api, 200, 200, 50, 0, isQueued=1)
+    dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)
+    dType.SetPTPCommonParams(api, 100, 100, isQueued=1)
 
-# Block coordinates (replace with actual values from your system)
-yellow_x = -12.991453
-yellow_y = 387.2255488632734
-yellow_z = 40.854700854700894
+    # Step 0: Perform Homing operation as required
+    dType.SetHOMECmd(api, temp=0, isQueued=1)
 
-blue_x = 114.444444
-blue_y = 398.4032
-blue_z = 40.854700854700894
+    # Block coordinates and sequence
+    # Note: All coordinates are within X: [200, 300] and Y: [-100, 100], so no swapping is needed.
+    block_coords = [
+        [267.5, 10.3],   # Block 0 (Blue)
+        [246.0, 74.8],   # Block 1 (Green)
+        [225.1, 45.7],   # Block 2 (Yellow)
+        [270.9, -31.6],  # Block 3 (Yellow)
+        [267.9, -69.9],  # Block 4 (Yellow)
+        [226.1, -63.1],  # Block 5 (Red)
+        [218.3, 5.7],    # Block 6 (Red)
+        [238.6, -16.3]   # Block 7 (Red)
+    ]
 
-# Target position (add safety margin)
-target_x = blue_x + 20
-target_y = yellow_y
-target_z = yellow_z
+    target_x, target_y = 280.0, 85.0
+    hover_z = 50.0
+    pick_z = -50.0
+    place_z_start = -50.0
+    block_height = 25.4  # 1 inch in mm
+    last_cmd_index = 0
 
+    # Iteration through all 8 blocks
+    for i in range(8):
+        current_block_x = block_coords[i][0]
+        current_block_y = block_coords[i][1]
+        current_place_z = place_z_start + (i * block_height)
 
-#Safety height above blocks
-safety_height = 50
+        # PICK UP SEQUENCE
+        # Hover above the block
+        dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, current_block_x, current_block_y, hover_z, 0, isQueued=1)
+        # Descend to the block
+        dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, current_block_x, current_block_y, pick_z, 0, isQueued=1)
+        # Engage suction cup
+        dType.SetEndEffectorSuctionCup(api, 1, 1, isQueued=1)
+        # Lift block back to hover height
+        dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, current_block_x, current_block_y, hover_z, 0, isQueued=1)
 
+        # PLACE SEQUENCE
+        # Move to target location hover height
+        dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, hover_z, 0, isQueued=1)
+        # Descend to the current stack height
+        dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, current_place_z, 0, isQueued=1)
+        # Disengage suction cup
+        dType.SetEndEffectorSuctionCup(api, 1, 0, isQueued=1)
+        # Lift arm back to hover height for clearance
+        last_cmd_index = dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, hover_z, 0, isQueued=1)[0]
 
-#Step 1: Pick up yellow block
+    # Final Move: Lift to a safe height and finish
+    last_cmd_index = dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, 160.0, 0, isQueued=1)[0]
 
-#Approach above yellow block
-approach_x = yellow_x
-approach_y = yellow_y
-approach_z = yellow_z + 10
+    # Start executing the queued commands
+    dType.SetQueuedCmdStartExec(api)
 
-dType.SetPTPCmd(api, ptpMode, approach_x, approach_y, approach_z, 0, 0)
-time.sleep(2)
+    # Wait until the last command in the sequence has finished
+    while last_cmd_index > dType.GetQueuedCmdCurrentIndex(api)[0]:
+        dType.dSleep(500)
 
-
-#Descend and grip (Simulate gripping – replace with actual gripper control)
-dType.SetPTPCmd(api, ptpMode, approach_x, approach_y, yellow_z, 0, 0)
-time.sleep(2)
-print("Gripper closed (simulated)")
-
-
-#Lift yellow block
-dType.SetPTPCmd(api, ptpMode, approach_x, approach_y, safety_height, 0, 0)
-time.sleep(2)
-
-
-
-#Step 2: Move yellow block
-
-#Move to target position
-dType.SetPTPCmd(api, ptpMode, target_x, target_y, safety_height, 0, 0)
-time.sleep(2)
-
-#Descend to surface
-dType.SetPTPCmd(api, ptpMode, target_x, target_y, target_z, 0, 0)
-time.sleep(2)
-
-#Release yellow block (Simulate releasing – replace with actual gripper control)
-print("Gripper opened (simulated)")
-
-
-#Step 3: Retract
-retract_x = 0 # Define safe retract position
-retract_y = 0
-retract_z = safety_height
-
-dType.SetPTPCmd(api, ptpMode, retract_x, retract_y, retract_z, 0, 0)
-time.sleep(2)
-
-# Disconnect from Dobot
-dType.DisconnectDobot(api)
+    # Stop execution and clean up
+    dType.SetQueuedCmdStopExec(api)
+    dType.DisconnectDobot(api)
+else:
+    print("Failed to connect to Dobot.")
