@@ -177,7 +177,7 @@ Plug in your USB webcam. If you're using a built-in laptop camera, no action is 
 
 ### Set up the workspace
 
-Place the **8" × 5" white paper** flat on the table directly in front of the robot arm. The four corners of the paper must map to these robot coordinates:
+Place the **8" × 4" white paper** flat on the table directly in front of the robot arm. The four corners of the paper must map to these robot coordinates:
 
 ```
 Paper corner          Robot coordinate (X, Y)
@@ -188,7 +188,7 @@ Bottom-left           (200, -100)
 Bottom-right          (200,  100)
 ```
 
-Position the paper so the robot arm can physically reach all four corners. Place your coloured foam blocks on the paper.
+Run [`four_corners.py`](demo-magician-python-64-master/four_corners.py) to move the robot arm between all four corners, and make sure the corners of the paper line up with it. Place your coloured foam blocks on the paper.
 
 > **Tip:** Use small pieces of tape to mark the paper corners on the table so the workspace stays consistent between sessions.
 
