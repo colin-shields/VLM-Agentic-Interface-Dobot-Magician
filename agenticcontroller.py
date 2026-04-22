@@ -8,6 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError, ClientError
+import time
 from PIL import Image, ImageColor, ImageDraw
 
 # ---------------------------------------------------------------------------
@@ -89,7 +90,7 @@ def plot_bounding_boxes(
         draw.rectangle(((abs_x1, abs_y1), (abs_x2, abs_y2)), outline=color, width=4)
         draw.text((abs_x1 + 8, abs_y1 + 6), label, fill=color)
 
-    save_path = os.path.join(os.getcwd(), "image_with_bounding_boxes.png")
+    save_path = os.path.join(os.getcwd(), "Tests/1/image_with_bounding_boxes.png")
     img.save(save_path)
     return save_path
 
@@ -140,7 +141,7 @@ def capture_image() -> str | None:
         st.error("Failed to capture image.")
         return None
 
-    img_path = "captured_image.png"
+    img_path = "Tests/1/captured_image.png"
     cv2.imwrite(img_path, frame)
     return img_path
 
@@ -235,6 +236,7 @@ if run_button:
 
     st.success("Image captured successfully!")
     im = Image.open(img_path)
+    st.image(im)
 
     # ── Step 2 ── Detect workspace ───────────────────────────────────────────
     st.write("### Step 2 — Detecting Workspace Boundary")
