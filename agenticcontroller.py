@@ -7,6 +7,7 @@ import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
 from google import genai
+from google.genai.errors import ServerError, ClientError
 from PIL import Image, ImageColor, ImageDraw
 
 # ---------------------------------------------------------------------------
@@ -41,11 +42,23 @@ COLORS = [
 
 def generate(prompt_parts: list) -> str:
     """Call the Gemini API and return the plain-text response."""
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt_parts,
-    )
-    return response.text
+    global client, api_key
+    wait_factor = 1
+    while True:
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt_parts,
+            )
+            return response.text
+        except ServerError as e:
+            wait_factor *= 2
+            st.write(f":red[Error, retrying request after {wait_factor}s: {e}]")
+            time.sleep(wait_factor)
+        except ClientError as e:
+            st.write(f":red[Tokens exhausted. Check streamlit terminal to enter new API key.\n{e}]")
+            api_key = input("Tokens exhausted, enter new API key: ")
+            client = genai.Client(api_key=api_key)
 
 
 def plot_bounding_boxes(
@@ -276,8 +289,11 @@ if run_button:
     boxes_dict: dict[str, list] = {f"block_{i}": x for i, x in enumerate(boxes)}
     combined_dict = {**boxes_dict, **workspace_dict}
 
-    processed_image_path = plot_bounding_boxes(im, list(combined_dict.items()))
-    st.image(processed_image_path, caption="Image with Bounding Boxes")
+    try:
+        processed_image_path = plot_bounding_boxes(im, list(combined_dict.items()))
+        st.image(processed_image_path, caption="Image with Bounding Boxes")
+    except ValueError as e:
+        st.write(f":red[Could not generate image with bounding boxes >:( \n{e}]")
 
     # ── Step 5 ── Coordinate transformation ─────────────────────────────────
     st.write("### Step 5 — Transforming to Robot Coordinates")
