@@ -25,6 +25,8 @@ if not api_key:
     )
     st.stop()
 
+os.makedirs("Tests/1", exist_ok=True)
+
 client = genai.Client(api_key=api_key)
 MODEL_NAME = "gemini-3-flash-preview"
 
