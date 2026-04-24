@@ -130,7 +130,7 @@ def capture_image() -> str | None:
         Path to the saved PNG, or ``None`` on failure.
     """
     st.write("Accessing webcam…")
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     if not cap.isOpened():
         st.error("Could not access the webcam.")
@@ -374,11 +374,17 @@ if run_button:
         st.error(f"Could not write generated code: {exc}")
         st.stop()
 
-    current_dir = os.getcwd()
-    subfolder_path = os.path.join(current_dir, "demo-magician-python-64-master")
-    os.chdir(subfolder_path)
-    result = subprocess.run(["python", "DobotControl.py"], capture_output=True, text=True)
-    os.chdir(current_dir)
+    # Run generated code as subprocess.
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    run_path = os.path.join(current_dir, "demo-magician-python-64-master", "DobotControl.py")
+    cwd = os.path.dirname(run_path)
+    result = subprocess.run(["python", run_path],
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            cwd=cwd,
+                            env={**os.environ, "PYTHONUTF8": "1"})
 
     if result.returncode != 0:
         st.error(f"Robot script exited with an error:\n{result.stderr}")
