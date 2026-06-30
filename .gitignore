@@ -1,6 +1,8 @@
 # Testing & Runtime
 Tests/
 demo-magician-python-64-master/DobotControl.py
+test_images
+test.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
