@@ -13,8 +13,6 @@ from PIL import Image, ImageColor, ImageDraw
 
 # CONFIG ###############################################################################################################
 
-TIMESTAMP = int(time.time())
-
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
@@ -42,11 +40,6 @@ COLORS = [
 # Load prompt from file.
 with open("prompt.md", 'r') as f:
     BASE_PROMPT = f.read()
-
-# Create test folder for logging attempts.
-TEST_DIR = f"Tests/{TIMESTAMP}"
-os.makedirs("Tests", exist_ok=True)
-os.makedirs(TEST_DIR, exist_ok=False)
 
 # Optional test image (for when webcam is not operational); set as None to use webcam (default)
 # TEST_IMG_PATH = None
@@ -142,6 +135,8 @@ def capture_image() -> str | None:
         Path to the saved PNG, or ``None`` on failure.
     """
     if TEST_IMG_PATH is not None:
+        im = Image.open(TEST_IMG_PATH)
+        im.save(TEST_DIR, "captured_image.png")
         return TEST_IMG_PATH
 
     st.write("Accessing webcam…")
@@ -241,6 +236,13 @@ user_command = st.text_input(
 run_button = st.button("Run")
 
 if run_button:
+    TIMESTAMP = int(time.time())
+
+    # Create test folder for logging attempts.
+    TEST_DIR = f"Tests/{TIMESTAMP}"
+    os.makedirs("Tests", exist_ok=True)
+    os.makedirs(TEST_DIR, exist_ok=False)
+
     # ─ Capture image ──────────────────────────────────────────────────────────────────────────────────────────────────
     st.write("### Step 1 — Capture Image")
     img_path = capture_image()
