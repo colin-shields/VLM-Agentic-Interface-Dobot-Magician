@@ -13,5 +13,9 @@ You should analyze the image in steps:
     | Bottom-right | (200, 100)              |
 - Come up with a detailed, step-by-step action plan for taking the necessary steps to move the arm to execute the task.
 - Generate the robot control code.
+  - For the z-coordinates, use 50.0 for hover and -50.0 to pick up the blocks. 
+  - Use the suction cup attachment. 
+  - Remember to call SetHOMECmd() before moving the robot. 
+  - The y coordinates go from left-to-right. Left is positive, right is negative, the center is y=0. The x coordinates go from front-to-back in front of the bot.
 
 Once again, this is the task to execute: %USER_TASK%
