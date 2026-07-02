@@ -40,8 +40,8 @@ with open("prompt.md", 'r') as f:
     BASE_PROMPT = f.read()
 
 # Optional test image (for when webcam is not operational); set as None to use webcam (default)
-# TEST_IMG_PATH = None
-TEST_IMG_PATH = "test_images/oneBlueOneRed.jfif"
+TEST_IMG_PATH = None
+# TEST_IMG_PATH = "test_images/test_image.png"
 
 
 # HELPER UTILITIES #####################################################################################################
@@ -223,9 +223,38 @@ def add_color_to_dict(
     return colored
 
 
+def run_file(path: str, print_result=True):
+    print(f"Running {path}")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    run_path = os.path.join(current_dir, "demo-magician-python-64-master", path)
+    cwd = os.path.dirname(run_path)
+    result = subprocess.run(["python", run_path],
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            cwd=cwd,
+                            env={**os.environ, "PYTHONUTF8": "1"})
+
+    if print_result:
+        if result.returncode != 0:
+            st.error(f"{path} script exited with an error:\n{result.stderr}")
+        else:
+            st.success(f"{path} script executed successfully:")
+            if result.stdout:
+                st.code(result.stdout)
+
+
 # STREAMLIT ############################################################################################################
 
 st.title("VLM Agentic Interface for Dobot Magician")
+
+four_corners_btn = st.sidebar.button("Move robot to workspace corners")
+if four_corners_btn:
+    run_file("four_corners.py")
+rerun_btn = st.sidebar.button("Rerun most recent code")
+if rerun_btn:
+    run_file("DobotControl.py")
 
 user_command = st.text_input(
     "Enter your command:",
@@ -319,23 +348,6 @@ if run_button:
 
     # exec_button = st.button("Run the Code")
     # if exec_button:
-    print(f"Running {code_path}")
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    run_path = os.path.join(current_dir, "demo-magician-python-64-master", "DobotControl.py")
-    cwd = os.path.dirname(run_path)
-    result = subprocess.run(["python", run_path],
-                            capture_output=True,
-                            text=True,
-                            encoding="utf-8",
-                            errors="replace",
-                            cwd=cwd,
-                            env={**os.environ, "PYTHONUTF8": "1"})
-
-    if result.returncode != 0:
-        st.error(f"Robot script exited with an error:\n{result.stderr}")
-    else:
-        st.success("Robot script executed successfully.")
-        if result.stdout:
-            st.text(result.stdout)
+    run_file("DobotControl.py")
 
 ########################################################################################################################
