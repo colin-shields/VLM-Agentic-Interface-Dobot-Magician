@@ -289,9 +289,12 @@ if run_button:
 
     config_path = os.path.join(TEST_DIR, "config.txt")
     with open(config_path, 'w') as f:
+        cur_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
         f.write(f"TIMESTAMP: {TIMESTAMP}\n"
                 f"MODEL: {MODEL_NAME}\n"
+                f"GIT COMMIT: {cur_commit}\n\n"
                 f"PROMPT:\n{replaced_prompt}")
+
 
     st.divider()
     st.write("# Response from Gemini:")
