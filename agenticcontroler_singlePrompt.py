@@ -25,7 +25,8 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 # MODEL_NAME = "gemini-3-flash-preview"
-MODEL_NAME = "gemini-3.1-flash-lite"
+# MODEL_NAME = "gemini-3.1-flash-lite"
+MODEL_NAME = "gemini-3.5-flash"
 
 # Build a large color palette for bounding-box drawing
 _EXTRA_COLORS = list(ImageColor.colormap.keys())
@@ -324,10 +325,9 @@ if run_button:
                 f"GIT COMMIT: {cur_commit}\n\n"
                 f"PROMPT:\n{replaced_prompt}")
 
-    with open("conclusions.txt", "a"):
-        # Write the results of executing the robot in this file.
-        # TODO: Add this to streamlit as a text area. For now, enter conclusions manually
-        pass
+    with open(os.path.join(TEST_DIR, "conclusions.txt"), 'w') as f:
+        # TODO: Add this to streamlit as a text area. For now, enter conclusions manually.
+        f.write("Write the results of executing the robot in this file.")
 
     st.divider()
     st.write("# Response from Gemini:")
