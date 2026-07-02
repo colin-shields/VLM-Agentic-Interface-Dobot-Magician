@@ -23,8 +23,6 @@ if not api_key:
     )
     st.stop()
 
-os.makedirs("Tests/1", exist_ok=True)
-
 client = genai.Client(api_key=api_key)
 # MODEL_NAME = "gemini-3-flash-preview"
 MODEL_NAME = "gemini-3.1-flash-lite"
@@ -136,7 +134,7 @@ def capture_image() -> str | None:
     """
     if TEST_IMG_PATH is not None:
         im = Image.open(TEST_IMG_PATH)
-        im.save(TEST_DIR, "captured_image.png")
+        im.save(os.path.join(TEST_DIR, "captured_image.png"))
         return TEST_IMG_PATH
 
     st.write("Accessing webcam…")
@@ -319,25 +317,25 @@ if run_button:
 
     # ─ Run generated code as subprocess ───────────────────────────────────────────────────────────────────────────────
 
-    exec_button = st.button("Run the Code")
-    if exec_button:
-        print(f"Running {code_path}")
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        run_path = os.path.join(current_dir, "demo-magician-python-64-master", "DobotControl.py")
-        cwd = os.path.dirname(run_path)
-        result = subprocess.run(["python", run_path],
-                                capture_output=True,
-                                text=True,
-                                encoding="utf-8",
-                                errors="replace",
-                                cwd=cwd,
-                                env={**os.environ, "PYTHONUTF8": "1"})
+    # exec_button = st.button("Run the Code")
+    # if exec_button:
+    print(f"Running {code_path}")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    run_path = os.path.join(current_dir, "demo-magician-python-64-master", "DobotControl.py")
+    cwd = os.path.dirname(run_path)
+    result = subprocess.run(["python", run_path],
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            cwd=cwd,
+                            env={**os.environ, "PYTHONUTF8": "1"})
 
-        if result.returncode != 0:
-            st.error(f"Robot script exited with an error:\n{result.stderr}")
-        else:
-            st.success("Robot script executed successfully.")
-            if result.stdout:
-                st.text(result.stdout)
+    if result.returncode != 0:
+        st.error(f"Robot script exited with an error:\n{result.stderr}")
+    else:
+        st.success("Robot script executed successfully.")
+        if result.stdout:
+            st.text(result.stdout)
 
 ########################################################################################################################
