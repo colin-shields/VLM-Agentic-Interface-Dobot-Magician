@@ -266,8 +266,8 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/{TIMESTAMP}"
-    os.makedirs("Tests", exist_ok=True)
+    TEST_DIR = f"Tests/live-tests/{TIMESTAMP}"
+    os.makedirs("Tests/live-tests", exist_ok=True)
     os.makedirs(TEST_DIR, exist_ok=False)
 
     # ─ Capture image ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -310,6 +310,8 @@ if run_button:
         lecture_ppt
     ])
 
+    # ─ Logging ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
     response_path = os.path.join(TEST_DIR, "response.md")
     with open(response_path, 'w') as f:
         f.write(response)
@@ -322,6 +324,10 @@ if run_button:
                 f"GIT COMMIT: {cur_commit}\n\n"
                 f"PROMPT:\n{replaced_prompt}")
 
+    with open("conclusions.txt", "a"):
+        # Write the results of executing the robot in this file.
+        # TODO: Add this to streamlit as a text area. For now, enter conclusions manually
+        pass
 
     st.divider()
     st.write("# Response from Gemini:")
@@ -330,15 +336,13 @@ if run_button:
 
     # ─ Parse Code ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    code_pattern = re.compile(r"```python.*?```", re.DOTALL)
+    code_pattern = re.compile(r"```python\n(.*)?```", re.DOTALL)
     code_match = re.search(code_pattern, response)
 
     code_path = os.path.join("demo-magician-python-64-master", "DobotControl.py")
     if code_match:
         with open(code_path, 'w', encoding="utf-8") as f:
-            f.write(code_match.group(0)
-                    .replace("```python\n", '')
-                    .replace("```", ''))
+            f.write(code_match.group(1))
         st.success(f"Python code written to `{code_path}`")
     else:
         st.error(f"Could not parse the generated code.")
