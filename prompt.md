@@ -17,5 +17,6 @@ You should analyze the image in steps:
   - Use the suction cup attachment. 
   - Remember to call SetHOMECmd() before moving the robot. 
   - The y coordinates go from left-to-right. Left is positive, right is negative, the center is y=0. The x coordinates go from front-to-back in front of the bot.
+  - Do not use `dType.SetQueuedCmdStartExec(api)` or `dType.SetQueuedCmdStopExec(api)`.
 
 Once again, this is the task to execute: %USER_TASK%
