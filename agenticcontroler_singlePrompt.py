@@ -1,6 +1,8 @@
 import os
 import re
 import subprocess
+import time
+import json
 
 import cv2
 import numpy as np
@@ -8,7 +10,6 @@ import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError, ClientError
-import time
 from PIL import Image, ImageColor, ImageDraw
 
 # CONFIG ###############################################################################################################
@@ -25,8 +26,8 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 # MODEL_NAME = "gemini-3-flash-preview"
-# MODEL_NAME = "gemini-3.1-flash-lite"
-MODEL_NAME = "gemini-3.5-flash"
+MODEL_NAME = "gemini-3.1-flash-lite"
+# MODEL_NAME = "gemini-3.5-flash"
 
 # Build a large color palette for bounding-box drawing
 _EXTRA_COLORS = list(ImageColor.colormap.keys())
@@ -41,8 +42,8 @@ with open("prompt.md", 'r') as f:
     BASE_PROMPT = f.read()
 
 # Optional test image (for when webcam is not operational); set as None to use webcam (default)
-TEST_IMG_PATH = None
-# TEST_IMG_PATH = "test_images/test_image.png"
+# TEST_IMG_PATH = None
+TEST_IMG_PATH = "test_images/oneBlueOneRed.jfif"
 
 
 # HELPER UTILITIES #####################################################################################################
@@ -333,6 +334,23 @@ if run_button:
     st.write("# Response from Gemini:")
     st.markdown(response)
     st.divider()
+
+    # ─ Parse Bounding Boxes ───────────────────────────────────────────────────────────────────────────────────────────
+
+    json_pattern = re.compile(r"```json\n(.*\n})?```", re.DOTALL)
+    json_match = re.search(json_pattern, response)
+
+    if json_match:
+        print(f"JSON:\n"
+              f"{json_match.group(1)}")
+        st.write("# Bounding Boxes:")
+        try:
+            bboxes = json.loads(json_match.group(1))
+            st.json(bboxes)
+        except Exception as e:
+            st.error(f"Error parsing json: {e}")
+    else:
+        st.error(f"Could not draw bounding boxes.")
 
     # ─ Parse Code ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
