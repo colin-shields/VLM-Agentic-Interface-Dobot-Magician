@@ -257,6 +257,7 @@ if four_corners_btn:
 rerun_btn = st.sidebar.button("Rerun most recent code")
 if rerun_btn:
     run_file("DobotControl.py")
+autorun_tgl = st.sidebar.toggle("Auto-run code after generation", True)
 
 user_command = st.text_input(
     "Enter your command:",
@@ -288,7 +289,7 @@ if run_button:
     try:
         with open("python demo.txt", encoding="utf-8") as f:
             example_code = f.read()
-        with open("DobotDllType.txt") as f:
+        with open("DobotDllType.txt", encoding="utf-8") as f:
             dobot_dll = f.read()
         with open("CMPSC 497 Robotics Lecture #5 Industrial Robots v3.3.txt", encoding="utf-8") as f:
             lecture_ppt = f.read()
@@ -315,7 +316,7 @@ if run_button:
     # ─ Logging ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
     response_path = os.path.join(TEST_DIR, "response.md")
-    with open(response_path, 'w') as f:
+    with open(response_path, 'w', encoding="utf-8") as f:
         f.write(response)
 
     config_path = os.path.join(TEST_DIR, "config.txt")
@@ -337,24 +338,33 @@ if run_button:
 
     # ─ Parse Bounding Boxes ───────────────────────────────────────────────────────────────────────────────────────────
 
-    json_pattern = re.compile(r"```json\n(.*\n})?```", re.DOTALL)
+    json_pattern = re.compile(r"```json\n(.*?)```", re.DOTALL)
     json_match = re.search(json_pattern, response)
 
     if json_match:
-        print(f"JSON:\n"
-              f"{json_match.group(1)}")
         st.write("# Bounding Boxes:")
         try:
             bboxes = json.loads(json_match.group(1))
             st.json(bboxes)
+
+            draw_im = cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
+            draw = ImageDraw.Draw(im)
+            for obj, coords in dict(bboxes).items():
+                draw.rectangle(coords, width=3)
+                # coords = tuple(coords)
+                # cv2.rectangle(draw_im, coords[:2], coords[-2:])
+            im.save(os.path.join(TEST_DIR, "bounding_boxes.png"))
+            st.image(im)
+
         except Exception as e:
             st.error(f"Error parsing json: {e}")
+            print(e)
     else:
         st.error(f"Could not draw bounding boxes.")
 
     # ─ Parse Code ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    code_pattern = re.compile(r"```python\n(.*)?```", re.DOTALL)
+    code_pattern = re.compile(r"```python\n(.*?)```", re.DOTALL)
     code_match = re.search(code_pattern, response)
 
     code_path = os.path.join("demo-magician-python-64-master", "DobotControl.py")
@@ -370,6 +380,9 @@ if run_button:
 
     # exec_button = st.button("Run the Code")
     # if exec_button:
-    run_file("DobotControl.py")
+    if autorun_tgl:
+        run_file("DobotControl.py")
+    else:
+        st.success("Program finished. Press the 'Rerun most recent code' button in the sidebar to run the code.")
 
 ########################################################################################################################

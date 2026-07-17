@@ -2,11 +2,12 @@ Attached is an image of a workspace containing any number of blocks on top of a 
 
 You should analyze the image in steps: 
 - Find the bounding box of the paper and all boxes resting on it.
+  - The dimensions of the image are %IMG_DIMENSIONS%.
+  - Do NOT estimate.
   - Print out the locations of each bounding box in a JSON code block, where each key is the name of the object. Do not nest.
-    - Use the format `"object"=[x_min, y_min, x_min, x_max]`
+      - Use the format `"object"=[x_min, y_min, x_min, x_max]`
 - Analyze the spatial relationships between all the relevant objects in the image.
 - Transform the image coordinates to robot coordinates.
-  - The dimensions of the image are %IMG_DIMENSIONS%.
   - | Paper Corner | Robot Coordinate (x, y) |
     |--------------|-------------------------|
     | Top-left     | (300, -100)             |
