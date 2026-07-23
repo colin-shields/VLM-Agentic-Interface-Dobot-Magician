@@ -22,6 +22,8 @@ def main():
     dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)
     dType.SetPTPCommonParams(api, 100, 100, isQueued=1)
 
+    # dType.SetHOMECmd(api, temp=0, isQueued=1)
+
     # Async PTP Motion Axes
     #   X-axis --> front to back (assuming the side with the cable ports is the back)
     #   Y-axis --> side to side

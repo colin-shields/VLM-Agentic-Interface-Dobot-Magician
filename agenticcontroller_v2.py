@@ -187,6 +187,13 @@ def transform_coordinates(img_data: dict) -> dict:
         dtype=np.float32,
     )
 
+    if len(img_data["paper"][0]) > 2:
+        try:
+            x1, y1, x2, y2, x3, y3, x4, y4 = img_data["paper"][0]
+            img_data["paper"] = [(x1, y1), (x2, y2), (x3, y3), (x4, y4)]
+        except Exception as e:
+            raise ValueError("Paper coordinates not returned in a parseable format.")
+
     image_corners = np.array(img_data["paper"], dtype=np.float32)
     H, _ = cv2.findHomography(image_corners, robot_corners)
 
@@ -270,11 +277,23 @@ def draw_grid(img: Image.Image, grid_size: int = 100) -> Image.Image:
 def draw_bounding_boxes(img: Image.Image, data: dict) -> Image.Image:
     img = img.copy()
     draw = ImageDraw.Draw(img)
+
     for key, value in data.items():
+
         try:
-            draw.rectangle(value)
+
+            if key == "paper":
+                prev = value[0]
+                for point in value:
+                    draw.line([prev, point], "red", 3)
+                    prev = point
+                draw.line([value[-1], value[1]], "red", 3)
+            else:
+                draw.rectangle(value, outline="red", width=3)
+
         except Exception as e:
             print(f"Could not draw bounding box for {key}: {e}")
+
     img.save(os.path.join(TEST_DIR, "bounding_boxes.png"))
     return img
 
