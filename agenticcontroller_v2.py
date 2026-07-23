@@ -183,7 +183,7 @@ def transform_coordinates(img_data: dict) -> dict:
         (300,  100), (300, -100), (200,  100), (200, -100)
     """
     robot_corners = np.array(
-        [[300, 100], [300, -100], [200, 100], [200, -100]],
+        [[300, 100], [300, -100], [200, -100], [200, 100]],
         dtype=np.float32,
     )
 
@@ -279,17 +279,38 @@ def draw_bounding_boxes(img: Image.Image, data: dict) -> Image.Image:
     draw = ImageDraw.Draw(img)
 
     for key, value in data.items():
+        # print(f"{key}: {value}")
+
+        width, height = img.size
+
+        def scale_point(x, y):
+            return (
+                x * width / 1000,
+                y * height / 1000,
+            )
 
         try:
 
             if key == "paper":
-                prev = value[0]
-                for point in value:
-                    draw.line([prev, point], "red", 3)
-                    prev = point
-                draw.line([value[-1], value[1]], "red", 3)
+                points = [scale_point(x, y) for x, y in value]
+                draw.polygon(points, outline="red", width=3)
+                # prev = value[0]
+                # for point in value:
+                #     draw.line([prev, point], "red", 3)
+                #     prev = point
+                # draw.line([value[-1], value[0]], "red", 3)
             else:
-                draw.rectangle(value, outline="red", width=3)
+                x0, y0, x1, y1 = value
+
+                x0, y0 = scale_point(x0, y0)
+                x1, y1 = scale_point(x1, y1)
+
+                draw.rectangle(
+                    [min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)],
+                    outline="red",
+                    width=3,
+                )
+                # draw.rectangle(value, outline="red", width=3)
 
         except Exception as e:
             print(f"Could not draw bounding box for {key}: {e}")
@@ -370,7 +391,7 @@ if run_button:
 
     data_img = dict(json.loads(response_a[8:-4]))
     data_robot = transform_coordinates(data_img)
-    im_bb = draw_bounding_boxes(im_grid, data_robot)
+    im_bb = draw_bounding_boxes(im_grid, data_img)
 
     # ─ Send to Gemini (Code Generation) ───────────────────────────────────────────────────────────────────────────────
 
