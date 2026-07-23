@@ -22,27 +22,12 @@ def main():
     dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)
     dType.SetPTPCommonParams(api, 100, 100, isQueued=1)
 
-    # Asynch Home
-    #   NOTE: if the bot has just been reset, it will not run this (for some reason???)
-    dType.SetHOMECmd(api, temp=0, isQueued=1)
-
     # Async PTP Motion Axes
     #   X-axis --> front to back (assuming the side with the cable ports is the back)
     #   Y-axis --> side to side
     #   Z-axis --> up & down
-    # Move to the centerline & corners of the workspace.
-    x1 = 300
-    x2 = 200
-    y1 = 100
-    y2 = -100
-    z = -50
-    indexes = [dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y1, z, rHead=50, isQueued=1)[0],
-               dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y2, z, rHead=50, isQueued=1)[0],
-               dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x2, y2, z, rHead=50, isQueued=1)[0],
-               dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x2, y1, z, rHead=50, isQueued=1)[0],
-               dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y1, z, rHead=50, isQueued=1)[0],
-               dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y2, z, rHead=50, isQueued=1)[0],
-               ]
+    # Move to the camera position.
+    indexes = [dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, 200, 0, 170, rHead=50, isQueued=1)[0]]
     last_index = indexes[-1]
 
     # Start executing Command Queue

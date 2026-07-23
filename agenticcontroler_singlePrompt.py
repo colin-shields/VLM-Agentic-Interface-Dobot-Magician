@@ -42,8 +42,8 @@ with open("prompt.md", 'r') as f:
     BASE_PROMPT = f.read()
 
 # Optional test image (for when webcam is not operational); set as None to use webcam (default)
-# TEST_IMG_PATH = None
-TEST_IMG_PATH = "test_images/oneBlueOneRed.jfif"
+TEST_IMG_PATH = None
+# TEST_IMG_PATH = "test_images/oneBlueOneRed.jfif"
 
 
 # HELPER UTILITIES #####################################################################################################
@@ -140,7 +140,7 @@ def capture_image() -> str | None:
         return TEST_IMG_PATH
 
     st.write("Accessing webcam…")
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         st.error("Could not access the webcam.")
@@ -257,6 +257,9 @@ if four_corners_btn:
 rerun_btn = st.sidebar.button("Rerun most recent code")
 if rerun_btn:
     run_file("DobotControl.py")
+cam_pos_btn = st.sidebar.button("Move to camera capture position")
+if cam_pos_btn:
+    run_file("cam_position.py")
 autorun_tgl = st.sidebar.toggle("Auto-run code after generation", True)
 
 user_command = st.text_input(
@@ -269,7 +272,7 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/live-tests/{TIMESTAMP}"
+    TEST_DIR = f"Tests/single/07-22/{TIMESTAMP}"
     os.makedirs("Tests/live-tests", exist_ok=True)
     os.makedirs(TEST_DIR, exist_ok=False)
 
