@@ -175,9 +175,7 @@ def capture_image() -> str | None:
 #     return [ymin, xmin, ymax, xmax]
 
 
-def transform_coordinates(
-        img_data: dict,
-) -> dict[str, list[tuple[float, float]]]:
+def transform_coordinates(img_data: dict) -> dict:
     """
     Use a homography to map image-space corner points to robot-space coordinates.
 
@@ -185,19 +183,36 @@ def transform_coordinates(
         (300,  100), (300, -100), (200,  100), (200, -100)
     """
     robot_corners = np.array(
-        [[300, 100], [300, -100], [200, 100], [200, -100]], dtype=np.float32
+        [[300, 100], [300, -100], [200, 100], [200, -100]],
+        dtype=np.float32,
     )
+
     image_corners = np.array(img_data["paper"], dtype=np.float32)
-    st.text(f"Image corners (pixel space):\n{image_corners}")
+    H, _ = cv2.findHomography(image_corners, robot_corners)
 
-    homography, _ = cv2.findHomography(image_corners, robot_corners)
+    def _transform(pt):
+        p = np.array([pt[0], pt[1], 1.0], dtype=np.float32)
+        t = H @ p
+        return (
+            float(t[0] / t[2]),
+            float(t[1] / t[2]),
+        )
 
-    def _transform(pt: tuple) -> tuple[float, float]:
-        p = np.array([pt[0], pt[1], 1.0], dtype=np.float32).reshape(3, 1)
-        t = (homography @ p).flatten()  # shape (3,) — all elements are scalars
-        return float(t[0] / t[2]), float(t[1] / t[2])
+    result = {"paper": [_transform(point) for point in img_data["paper"]]}
 
-    return {key: [_transform(p) for p in points] for key, points in img_data.items() if key != "paper"}
+    for key, value in img_data.items():
+        if key == "paper":
+            continue
+
+        # value = [x1, y1, x2, y2]
+        x1, y1, x2, y2 = value
+
+        x1r, y1r = _transform((x1, y1))
+        x2r, y2r = _transform((x2, y2))
+
+        result[key] = [(x1r, y1r), (x2r, y2r)]
+
+    return result
 
 
 # def add_color_to_dict(
@@ -334,8 +349,9 @@ if run_button:
 
     # ─ Parse Object Data ──────────────────────────────────────────────────────────────────────────────────────────────
 
-    data = dict(json.loads(response_a[8:-4]))
-    im_bb = draw_bounding_boxes(im_grid, data)
+    data_img = dict(json.loads(response_a[8:-4]))
+    data_robot = transform_coordinates(data_img)
+    im_bb = draw_bounding_boxes(im_grid, data_robot)
 
     # ─ Send to Gemini (Code Generation) ───────────────────────────────────────────────────────────────────────────────
 
@@ -346,11 +362,11 @@ if run_button:
     replaced_prompt_b = (
         PROMPT_B
         .replace("%USER_TASK%", user_command)
-        .replace("%OBJECT_DATA%", str(data))
+        .replace("%OBJECT_DATA%", str(data_robot))
     )
 
     response_b = generate([
-        PROMPT_B,
+        replaced_prompt_b,
         example_code,
         dobot_dll,
         lecture_ppt

@@ -16,5 +16,6 @@ Notes for generating the code:
   - Always set the `isQueued` parameter as `1`.
   - Do not use `dType.SetQueuedCmdStartExec(api)` or `dType.SetQueuedCmdStopExec(api)`.
   - Connect on COM7: `dType.ConnectDobot(api, "COM7", 115200)`
+  - Return only the Python object--say nothing else.
 
 Once again, this is the task to execute: %USER_TASK%
