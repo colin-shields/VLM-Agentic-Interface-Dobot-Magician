@@ -22,25 +22,12 @@ def main():
     dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)
     dType.SetPTPCommonParams(api, 100, 100, isQueued=1)
 
-    # dType.SetHOMECmd(api, temp=0, isQueued=1)     # use home.py
-
-    # Async PTP Motion Axes
-    #   X-axis --> front to back (assuming the side with the cable ports is the back)
-    #   Y-axis --> side to side
-    #   Z-axis --> up & down
-    # Move to the camera position.
-    indexes = [dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, 200, 0, 170, rHead=50, isQueued=1)[0]]
-    last_index = indexes[-1]
+    # Asynch Home
+    #   NOTE: if the bot has just been reset, it will not run this (for some reason???)
+    dType.SetHOMECmd(api, temp=0, isQueued=1)
 
     # Start executing Command Queue
     dType.SetQueuedCmdStartExec(api)
-
-    # Wait for executing last command
-    while last_index > dType.GetQueuedCmdCurrentIndex(api)[0]:
-        dType.dSleep(1000)
-
-    # Stop executing Command Queue
-    dType.SetQueuedCmdStopExec(api)
 
     # Disconnect bot
     dType.DisconnectDobot(api)

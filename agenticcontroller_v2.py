@@ -323,6 +323,9 @@ def draw_bounding_boxes(img: Image.Image, data: dict) -> Image.Image:
 
 st.title("VLM Agentic Interface for Dobot Magician")
 
+home_btn = st.sidebar.button("Home robot")
+if home_btn:
+    run_file("home.py")
 four_corners_btn = st.sidebar.button("Move robot to workspace corners")
 if four_corners_btn:
     run_file("four_corners.py")
@@ -344,7 +347,7 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/single/07-22/{TIMESTAMP}"
+    TEST_DIR = f"Tests/v2/07-23/{TIMESTAMP}"
     # os.makedirs("Tests/live-tests", exist_ok=True)
     os.makedirs(TEST_DIR, exist_ok=False)
 

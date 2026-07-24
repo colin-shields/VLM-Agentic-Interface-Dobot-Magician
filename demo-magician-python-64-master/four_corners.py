@@ -24,7 +24,7 @@ def main():
 
     # Asynch Home
     #   NOTE: if the bot has just been reset, it will not run this (for some reason???)
-    dType.SetHOMECmd(api, temp=0, isQueued=1)
+    # dType.SetHOMECmd(api, temp=0, isQueued=1)     # use home.py
 
     # Async PTP Motion Axes
     #   X-axis --> front to back (assuming the side with the cable ports is the back)
