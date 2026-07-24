@@ -15,7 +15,7 @@ Notes for generating the code:
   - The y coordinates go from left-to-right. Left is positive, right is negative, the center is y=0. The x coordinates go from front-to-back in front of the bot.
   - Always set the `isQueued` parameter as `1`.
   - Do not use `dType.SetQueuedCmdStopExec(api)` (but DO use `dType.SetQueuedCmdStartExec(api)`).
-  - Connect on COM7: `dType.ConnectDobot(api, "COM7", 115200)`
+  - Connect on %COM_PORT%: `dType.ConnectDobot(api, "%COM_PORT%", 115200)`
   - Return only the Python object--say nothing else.
 
 Once again, this is the task to execute: %USER_TASK%
