@@ -37,7 +37,7 @@ TEST_IMG_PATH = None
 # TEST_IMG_PATH = "test_images/oneBlueOneRed.jfif"
 
 ROBOT_PORT = "COM7"
-CAMERA_PORT = 0
+CAMERA_PORT = 1
 
 
 # HELPER UTILITIES #####################################################################################################
@@ -248,7 +248,7 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/v2/07-24/{TIMESTAMP}"
+    TEST_DIR = f"Tests/v2/08-03/coins/{TIMESTAMP}"
     os.makedirs(TEST_DIR, exist_ok=False)
 
     # ─ Capture image ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -283,7 +283,7 @@ if run_button:
         PROMPT_A = f.read()
 
     response_a = generate([
-        im_grid,
+        im,
         PROMPT_A
     ])
 
