@@ -248,7 +248,7 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/v2/08-03/coins/{TIMESTAMP}"
+    TEST_DIR = f"Tests/v2/08-12/1/{TIMESTAMP}"
     os.makedirs(TEST_DIR, exist_ok=False)
 
     # ─ Capture image ──────────────────────────────────────────────────────────────────────────────────────────────────

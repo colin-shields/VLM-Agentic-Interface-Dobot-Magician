@@ -26,8 +26,9 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 # MODEL_NAME = "gemini-3-flash-preview"
-MODEL_NAME = "gemini-3.1-flash-lite"
+# MODEL_NAME = "gemini-3.1-flash-lite"
 # MODEL_NAME = "gemini-3.5-flash"
+MODEL_NAME = "gemini-robotics-er-2-preview"
 
 # Build a large color palette for bounding-box drawing
 _EXTRA_COLORS = list(ImageColor.colormap.keys())
@@ -140,7 +141,7 @@ def capture_image() -> str | None:
         return TEST_IMG_PATH
 
     st.write("Accessing webcam…")
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     if not cap.isOpened():
         st.error("Could not access the webcam.")
@@ -272,8 +273,8 @@ if run_button:
     TIMESTAMP = int(time.time())
 
     # Create test folder for logging attempts.
-    TEST_DIR = f"Tests/single/07-22/{TIMESTAMP}"
-    os.makedirs("Tests/live-tests", exist_ok=True)
+    TEST_DIR = f"Tests/single/07-31/er/{TIMESTAMP}"
+    # os.makedirs("Tests/live-tests", exist_ok=True)
     os.makedirs(TEST_DIR, exist_ok=False)
 
     # ─ Capture image ──────────────────────────────────────────────────────────────────────────────────────────────────

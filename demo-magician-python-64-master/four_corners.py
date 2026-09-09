@@ -35,7 +35,7 @@ def main():
     x2 = 200
     y1 = 100
     y2 = -100
-    z = -50
+    z = -60
     indexes = [dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y1, z, rHead=50, isQueued=1)[0],
                dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x1, y2, z, rHead=50, isQueued=1)[0],
                dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, x2, y2, z, rHead=50, isQueued=1)[0],
